@@ -161,10 +161,16 @@ function generate() {
     ensureDirectories(path);
     fs.writeFileSync(path, getLayout(post.layout || "post.html", includes)(post), "utf8");
   });
+  function isExcluded(path) {
+    return (config.exclude || []).some(function (exclude) {
+      return path.slice(2).indexOf(exclude) === 0;
+    });
+  }
   function walkDir(dir) {
     fs.readdirSync(dir).forEach(function(fname) {
       if (/^[_\.]/.test(fname)) return;
       var file = dir + fname;
+      if (isExcluded(file)) return;
       if (fs.statSync(file).isDirectory()) {
         walkDir(file + "/");
       } else {
