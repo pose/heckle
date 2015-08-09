@@ -16,7 +16,7 @@
     "rimraf": "^2.6.3",
     "js-yaml": "^3.12.2",
     "codemirror": "^5.24.0",
-    "mold-template": "2.0.1"
+    "handlebars": "3.x.x"
   },
   "bugs": "http://github.com/marijnh/heckle/issues",
   "keywords": [

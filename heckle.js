@@ -6,6 +6,7 @@ var rmrf = require("rimraf");
 var yaml = require("js-yaml");
 var Mold = require("mold-template");
 var util = require("./util");
+var Handlebars = require('handlebars');
 
 /**
  * @param contents
@@ -114,39 +115,51 @@ function prepareMold(ctx) {
   return mold
 }
 
+function partialTemplate(tmpl, ctx) {
+  return function (newCtx) {
+    var finalCtx = JSON.parse(JSON.stringify(ctx));
+    Object.keys(newCtx).forEach(function (key) {
+      finalCtx[key] = newCtx[key];
+    });
+    return tmpl(finalCtx);
+  };
+}
+
+function prepareIncludes(ctx) {
+  if (!util.exists("_includes/", true)) return;
+  fs.readdirSync("_includes/").forEach(function(file) {
+    var includeName = file.match(/^(.*?)\.[^\.]+$/)[1];
+    Handlebars.registerPartial(includeName, fs.readFileSync("_includes/" + file, "utf8"));
+  });
+}
+
 var layouts = {};
 function getLayout(name, mold) {
   if (name.indexOf(".") == -1) name = name + ".html";
   if (layouts.hasOwnProperty(name)) return layouts[name];
-  var tmpl = function layout(doc) {
-    var text = layout.template(doc);
-    if (layout.parent) {
-      var wrapper = Object.create(doc, {content: {value: text}});
-      text = getLayout(layout.parent, mold)(wrapper);
-    }
-    return text;
-  };
-  tmpl.filename = name;
-  var contents = readContents(fs.readFileSync("_layouts/" + name, "utf8"));
-  tmpl.template = mold.bake(name, contents.mainText);
-  tmpl.parent = contents.frontMatter && "layout" in contents.frontMatter ?
-    contents.frontMatter.layout : null;
-  return layouts[name] = tmpl;
+  var tmpl = Handlebars.compile(fs.readFileSync("_layouts/" + name, "utf8"));
+
+  var mergedTmpl = partialTemplate(tmpl, ctx);
+
+  mergedTmpl.filename = name;
+  layouts[name] = mergedTmpl;
+
+  return mergedTmpl;
 }
 
-function generate(mold) {
+function generate() {
   var config = readConfig();
   renderMarkdown = getRenderMarkdown(config);
   var posts = readPosts(config);
   var ctx = {site: {posts: posts, tags: gatherTags(posts), config: config},
              dateFormat: require("dateformat")};
-  var mold = prepareMold(ctx);
+  var includes = prepareIncludes(ctx);
   if (util.exists("_site", true)) rmrf.sync("_site");
   posts.forEach(function(post) {
     if (post.isLink) return;
     var path = "_site/" + fillTemplate(config.postFileName, post);
     ensureDirectories(path);
-    fs.writeFileSync(path, getLayout(post.layout || "post.html", mold)(post), "utf8");
+    fs.writeFileSync(path, getLayout(post.layout || "post.html", includes)(post), "utf8");
   });
   function walkDir(dir) {
     fs.readdirSync(dir).forEach(function(fname) {
@@ -160,7 +173,7 @@ function generate(mold) {
         var contents = readContents(fs.readFileSync(file, "utf8"));
         if (contents.frontMatter) {
           var doc = contents.frontMatter;
-          var layout = getLayout(doc.layout || "default.html", mold);
+          var layout = getLayout(doc.layout || "default.html", includes);
           doc.content = /\.(md|markdown)$/.test(fname) ?
             renderMarkdown(contents.mainText) :
             contents.mainText;
