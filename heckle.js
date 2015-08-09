@@ -8,6 +8,12 @@ var Mold = require("mold-template");
 var util = require("./util");
 var Handlebars = require('handlebars');
 
+marked.setOptions({highlight: highlightCode, gfm: true});
+
+function escapeHTML(text) {
+  return String(text).replace(/[<&\"]/g, function(ch) {return HTMLspecial[ch];});
+}
+
 /**
  * @param contents
  *        A string containing the file contents.
@@ -51,7 +57,7 @@ function readPosts(config) {
     if (!post.tags.forEach && post.tags.split) post.tags = post.tags.split(/\s+/);
     var extension = d[5];
     if (extension == "link") {
-      var escd = Mold.prototype.escapeHTML(post.url);
+      var escd = escapeHTML(post.url);
       post.content = "<p>Read this post at <a href=\"" + escd + "\">" + escd + "</a>.</p>";
       post.isLink = true;
     } else {
