@@ -1,4 +1,4 @@
-const escapeHTML = require("mold-template").prototype.escapeHTML
+const escapeHTML = require("./util").escapeHTML
 const CodeMirror = require("codemirror/addon/runmode/runmode.node.js")
 
 module.exports = function highlightCode(code, lang) {

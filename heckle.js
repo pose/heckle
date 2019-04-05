@@ -4,15 +4,8 @@ var path = require("path");
 var fs = require("fs");
 var rmrf = require("rimraf");
 var yaml = require("js-yaml");
-var Mold = require("mold-template");
 var util = require("./util");
 var Handlebars = require('handlebars');
-
-marked.setOptions({highlight: highlightCode, gfm: true});
-
-function escapeHTML(text) {
-  return String(text).replace(/[<&\"]/g, function(ch) {return HTMLspecial[ch];});
-}
 
 /**
  * @param contents
@@ -57,7 +50,7 @@ function readPosts(config) {
     if (!post.tags.forEach && post.tags.split) post.tags = post.tags.split(/\s+/);
     var extension = d[5];
     if (extension == "link") {
-      var escd = escapeHTML(post.url);
+      var escd = util.escapeHTML(post.url);
       post.content = "<p>Read this post at <a href=\"" + escd + "\">" + escd + "</a>.</p>";
       post.isLink = true;
     } else {
@@ -112,15 +105,6 @@ function ensureDirectories(path) {
   }
 }
 
-function prepareMold(ctx) {
-  var mold = new Mold(ctx)
-  if (util.exists("_includes/", true))
-    fs.readdirSync("_includes/").forEach(function(file) {
-      mold.bake(file.match(/^(.*?)\.[^\.]+$/)[1], fs.readFileSync("_includes/" + file, "utf8"));
-    });
-  return mold
-}
-
 function partialTemplate(tmpl, ctx) {
   return function (newCtx) {
     var finalCtx = JSON.parse(JSON.stringify(ctx));
@@ -137,10 +121,11 @@ function prepareIncludes(ctx) {
     var includeName = file.match(/^(.*?)\.[^\.]+$/)[1];
     Handlebars.registerPartial(includeName, fs.readFileSync("_includes/" + file, "utf8"));
   });
+  return ctx;
 }
 
 var layouts = {};
-function getLayout(name, mold) {
+function getLayout(name, ctx) {
   if (name.indexOf(".") == -1) name = name + ".html";
   if (layouts.hasOwnProperty(name)) return layouts[name];
   var tmpl = Handlebars.compile(fs.readFileSync("_layouts/" + name, "utf8"));

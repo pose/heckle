@@ -15,3 +15,7 @@ exports.exists = function(file, isDir) {
   try { return fs.statSync(file)[isDir ? "isDirectory" : "isFile"](); }
   catch(e) { return false; }
 };
+
+exports.escapeHTML = function(text) {
+  return String(text).replace(/[<&\"]/g, function(ch) {return HTMLspecial[ch];});
+};
